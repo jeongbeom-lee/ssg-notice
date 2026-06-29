@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SSG 공지사항</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020617;--bg2:#0f172a;--card:#1e293b;--card2:#162032;
+  --border:#334155;--accent:#60a5fa;--text:#e5e7eb;--dim:#94a3b8;--muted:#475569;
+  --blue:#93c5fd;--green:#34d399;--red:#f87171;--yellow:#fbbf24;
+  --font:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',Arial,sans-serif;
+}
+html,body{width:100%;min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-tap-highlight-color:transparent;}
+
+/* ── 공통 ── */
+.page{display:none;flex-direction:column;min-height:100vh;}
+.page.active{display:flex;}
+
+/* ── 헤더 ── */
+.hdr{position:sticky;top:0;z-index:100;background:rgba(15,23,42,.97);border-bottom:1.5px solid var(--border);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.hdr-title{font-size:16px;font-weight:900;color:var(--blue);}
+.hdr-right{display:flex;align-items:center;gap:10px;}
+.hdr-time{font-size:18px;font-weight:900;color:var(--blue);font-variant-numeric:tabular-nums;letter-spacing:1px;}
+.hdr-date{font-size:11px;color:var(--dim);text-align:right;line-height:1.3;}
+
+/* ── 메인 페이지 ── */
+.main-body{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;}
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted);padding:60px 0;}
+.empty-state .ei{font-size:48px;opacity:.2;}
+.empty-state .et{font-size:15px;font-weight:700;}
+.empty-state .es{font-size:12px;opacity:.5;margin-top:2px;}
+
+/* 공지 카드 */
+.notice-card{background:var(--card2);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.card-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);}
+.card-badge{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0;}
+.card-name{font-size:15px;font-weight:900;}
+.card-cnt{font-size:11px;color:var(--dim);margin-left:auto;font-weight:700;}
+.card-body{padding:10px 14px;display:flex;flex-direction:column;gap:8px;}
+.notice-row-m{display:flex;gap:10px;align-items:flex-start;}
+.notice-num-m{width:22px;height:22px;border-radius:5px;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.2);color:var(--accent);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.notice-content-m{flex:1;}
+.notice-text-m{font-size:14px;font-weight:600;line-height:1.6;word-break:keep-all;}
+.notice-ts-m{font-size:10px;color:var(--muted);margin-top:2px;}
+
+/* 편집 버튼 */
+.fab{position:fixed;bottom:24px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 20px rgba(96,165,250,.4);display:flex;align-items:center;justify-content:center;z-index:200;}
+
+/* ── 편집 페이지 ── */
+.edit-body{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* 점포 탭 */
+.store-tabs{display:flex;overflow-x:auto;border-bottom:1.5px solid var(--border);background:var(--bg2);flex-shrink:0;-webkit-overflow-scrolling:touch;}
+.store-tabs::-webkit-scrollbar{display:none;}
+.store-tab{flex-shrink:0;padding:0 14px;height:44px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--dim);border-bottom:2.5px solid transparent;cursor:pointer;white-space:nowrap;transition:all .13s;}
+.store-tab.active{color:var(--blue);border-bottom-color:var(--accent);}
+.store-tab.visible{color:var(--green);}
+.store-tab.active.visible{color:var(--green);border-bottom-color:var(--green);}
+.tab-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.tab-check{font-size:10px;}
+
+/* 편집 컨텐츠 */
+.edit-content{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;}
+
+/* 점포 헤더 */
+.store-edit-hdr{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.store-edit-badge{padding:0 10px;height:30px;border-radius:7px;font-size:12px;font-weight:900;display:inline-flex;align-items:center;}
+.store-edit-name{font-size:18px;font-weight:900;color:var(--blue);}
+.vis-toggle{margin-left:auto;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:var(--font);border:1.5px solid var(--border);background:transparent;color:var(--dim);transition:all .13s;}
+.vis-toggle.on{border-color:var(--green);background:rgba(52,211,153,.12);color:var(--green);}
+
+/* 폰트 크기 */
+.font-panel-m{background:var(--card2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;}
+.fp-label{font-size:10px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.fp-btns-m{display:flex;gap:4px;flex-wrap:wrap;}
+.fp-btn-m{padding:5px 9px;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--dim);font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font);}
+.fp-btn-m.active{border-color:var(--accent);background:rgba(96,165,250,.12);color:var(--blue);}
+
+/* 색상 툴바 */
+.color-bar-m{background:var(--card2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;}
+.cb-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.cb-label-m{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;width:100%;margin-bottom:4px;}
+.cb-swatch-m{width:26px;height:26px;border-radius:6px;border:2px solid transparent;cursor:pointer;flex-shrink:0;}
+.cb-picker-m{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--border);cursor:pointer;padding:1px;background:transparent;}
+.cb-clear-m{padding:4px 10px;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--dim);font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font);}
+.cb-hint-m{font-size:10px;color:var(--muted);font-style:italic;width:100%;margin-top:2px;}
+
+/* 공지 에디터 */
+.notices-edit{display:flex;flex-direction:column;gap:8px;}
+.notice-edit-row{background:var(--card2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;gap:8px;align-items:flex-start;}
+.notice-edit-row:focus-within{border-color:var(--accent);}
+.ne-num{width:24px;height:24px;border-radius:5px;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.2);color:var(--accent);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.ne-editor{flex:1;min-height:52px;outline:none;font-family:var(--font);font-size:14px;font-weight:600;line-height:1.6;color:var(--text);border:none;background:transparent;word-break:keep-all;}
+.ne-editor:empty::before{content:attr(placeholder);color:var(--muted);pointer-events:none;display:block;}
+.ne-del{width:24px;height:24px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.add-btn-m{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:10px;border:1.5px dashed var(--border);background:transparent;color:var(--dim);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);width:100%;}
+
+/* 하단 저장 상태 */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(15,23,42,.97);border-top:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;z-index:150;}
+.sync-status{font-size:12px;font-weight:700;}
+.back-btn-m{padding:8px 18px;border-radius:9px;border:1.5px solid var(--accent);background:rgba(96,165,250,.1);color:var(--blue);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);}
+
+/* 모달 */
+.ov{position:fixed;inset:0;background:rgba(2,6,23,.88);backdrop-filter:blur(5px);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .17s;padding:20px;}
+.ov.open{opacity:1;pointer-events:all;}
+.modal{background:var(--bg2);border:1.5px solid var(--accent);border-radius:16px;padding:24px;width:100%;max-width:340px;}
+.modal-t{font-size:17px;font-weight:800;color:var(--blue);margin-bottom:4px;}
+.modal-s{font-size:12px;color:var(--dim);margin-bottom:16px;}
+.pw-inp{width:100%;background:var(--card2);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-family:var(--font);font-size:22px;letter-spacing:8px;text-align:center;padding:12px;outline:none;margin-bottom:8px;}
+.pw-inp:focus{border-color:var(--accent);}
+.pw-err{font-size:12px;color:var(--red);text-align:center;height:18px;margin-bottom:10px;}
+.modal-acts{display:flex;gap:8px;justify-content:flex-end;}
+.btn{padding:9px 18px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;border:none;font-family:var(--font);}
+.btn-c{background:var(--card);color:var(--dim);}
+.btn-s{background:var(--accent);color:#fff;}
+.pw-link{font-size:11px;color:var(--dim);text-align:center;cursor:pointer;text-decoration:underline;margin-top:8px;display:block;}
+
+::-webkit-scrollbar{width:3px;height:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- ── 메인 페이지 ── -->
+<div id="mainPage" class="page active">
+  <div class="hdr">
+    <div class="hdr-title">📢 SSG 공지사항</div>
+    <div class="hdr-right">
+      <div>
+        <div class="hdr-time" id="mainTime"></div>
+        <div class="hdr-date" id="mainDate"></div>
+      </div>
+    </div>
+  </div>
+  <div class="main-body" id="mainBody"></div>
+  <button class="fab" onclick="tryOpenEdit()">✏</button>
+</div>
+
+<!-- ── 편집 페이지 ── -->
+<div id="editPage" class="page">
+  <div class="hdr">
+    <div class="hdr-title">✏ 공지 편집</div>
+    <div class="hdr-right">
+      <span class="sync-status" id="syncStatusHdr"></span>
+    </div>
+  </div>
+  <div class="edit-body">
+    <div class="store-tabs" id="storeTabs"></div>
+    <div class="edit-content" id="editContent"></div>
+  </div>
+  <div class="bottom-bar">
+    <span class="sync-status" id="syncStatus"></span>
+    <button class="back-btn-m" onclick="goMain()">← 메인으로</button>
+  </div>
+</div>
+
+<!-- PW 모달 -->
+<div class="ov" id="pwOv" onclick="closePw(event)">
+  <div class="modal">
+    <div class="modal-t" id="pwTitle">🔒 관리자 로그인</div>
+    <div class="modal-s" id="pwDesc">편집하려면 비밀번호를 입력하세요</div>
+    <input class="pw-inp" id="pwInp" type="password" maxlength="20" placeholder="••••"
+      onkeydown="if(event.key==='Enter')submitPw()"
+      oninput="document.getElementById('pwErr').textContent=''">
+    <div class="pw-err" id="pwErr"></div>
+    <div class="modal-acts">
+      <button class="btn btn-c" onclick="closePw()">취소</button>
+      <button class="btn btn-s" onclick="submitPw()">확인</button>
+    </div>
+    <span class="pw-link" id="pwLink" onclick="startChangePw()">비밀번호 변경</span>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, onValue, set } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAL2fqMgZyU8QnMhuLnLVALZih6MWOBQvk",
+  authDomain: "ssg-notice.firebaseapp.com",
+  databaseURL: "https://ssg-notice-default-rtdb.firebaseio.com",
+  projectId: "ssg-notice",
+  storageBucket: "ssg-notice.firebasestorage.app",
+  messagingSenderId: "181518386352",
+  appId: "1:181518386352:web:f22b95b72bc2e22358e775"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* ── STORES ── */
+const STORES = [
+  {id:'bon',   name:'본점',    short:'본',   color:'#60a5fa'},
+  {id:'gg',    name:'경기점',  short:'경',   color:'#34d399'},
+  {id:'uijb',  name:'의정부점',short:'의',   color:'#fbbf24'},
+  {id:'busan', name:'부산점',  short:'부',   color:'#f87171'},
+  {id:'gwangju',name:'광주점', short:'광',   color:'#a78bfa'},
+  {id:'dj',    name:'대전점',  short:'대전', color:'#fb923c'},
+  {id:'dg',    name:'대구점',  short:'대구', color:'#2dd4bf'},
+];
+
+const COLOR_PRESETS = [
+  '#e5e7eb','#ffffff','#fcd34d','#6ee7b7','#93c5fd',
+  '#f9a8d4','#fca5a5','#c4b5fd','#5eead4','#fdba74',
+];
+
+const SCALE_STEPS = [
+  {v:.7,l:'70%'},{v:.8,l:'80%'},{v:.9,l:'90%'},{v:1,l:'100%'},
+  {v:1.2,l:'120%'},{v:1.4,l:'140%'},{v:1.6,l:'160%'},{v:1.8,l:'180%'},
+  {v:2,l:'200%'},{v:2.5,l:'250%'},{v:3,l:'300%'},
+];
+
+/* ── STATE ── */
+const data = {};
+STORES.forEach(s => data[s.id] = []);
+const vis = {};
+STORES.forEach(s => vis[s.id] = false);
+const fontScale = {};
+STORES.forEach(s => fontScale[s.id] = 1.0);
+
+let curId = STORES[0].id;
+let adminPw = '1111';
+let pwMode = 'login';
+let _saveTimer = null;
+let savedRange = null;
+
+/* ── FIREBASE ── */
+function saveToFirebase(){
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(()=>{
+    const payload = {};
+    STORES.forEach(s=>{
+      payload[s.id] = {
+        notices: data[s.id],
+        vis: vis[s.id],
+        fontScale: fontScale[s.id]
+      };
+    });
+    payload._adminPw = adminPw;
+    set(ref(db,'ssgNotice'), payload)
+      .then(()=> updateSync('saved'))
+      .catch(()=> updateSync('error'));
+  }, 600);
+}
+
+function updateSync(state){
+  const els = [document.getElementById('syncStatus'), document.getElementById('syncStatusHdr')];
+  els.forEach(el=>{
+    if(!el) return;
+    if(state==='saved'){ el.textContent='✅ 저장됨'; el.style.color='#34d399'; setTimeout(()=>{el.textContent='';},2500); }
+    else if(state==='error'){ el.textContent='⚠ 저장 실패'; el.style.color='#f87171'; }
+    else if(state==='loading'){ el.textContent='⏳ 불러오는 중...'; el.style.color='#94a3b8'; }
+    else { el.textContent=''; }
+  });
+}
+
+function loadFromFirebase(){
+  updateSync('loading');
+  onValue(ref(db,'ssgNotice'), (snapshot)=>{
+    const val = snapshot.val();
+    if(val){
+      STORES.forEach(s=>{
+        if(val[s.id]){
+          data[s.id] = val[s.id].notices || [];
+          vis[s.id]  = val[s.id].vis || false;
+          fontScale[s.id] = val[s.id].fontScale ?? 1.0;
+        }
+      });
+      if(val._adminPw) adminPw = val._adminPw;
+    }
+    updateSync('');
+    renderMain();
+    if(document.getElementById('editPage').classList.contains('active')){
+      renderTabs(); renderEditor(curId);
+    }
+  });
+}
+
+/* ── TIME ── */
+function pad(n){ return String(n).padStart(2,'0'); }
+function tick(){
+  const n = new Date();
+  const D = ['일','월','화','수','목','금','토'];
+  const te = document.getElementById('mainTime');
+  const de = document.getElementById('mainDate');
+  if(te) te.textContent = `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+  if(de) de.textContent = `${n.getMonth()+1}.${pad(n.getDate())} (${D[n.getDay()]})`;
+}
+setInterval(tick, 1000); tick();
+
+/* ── MAIN RENDER ── */
+function renderMain(){
+  const body = document.getElementById('mainBody');
+  const active = STORES.filter(s=> vis[s.id] && data[s.id].some(n=>n.text.trim()));
+  if(!active.length){
+    body.innerHTML = `<div class="empty-state"><div class="ei">📭</div><div class="et">표시할 공지사항이 없습니다</div><div class="es">편집 버튼을 눌러 공지를 추가하세요</div></div>`;
+    return;
+  }
+  body.innerHTML = active.map(s=>{
+    const notices = data[s.id].filter(n=>n.text.trim());
+    const sc = fontScale[s.id];
+    const tfs = Math.round(14 * sc);
+    return `
+    <div class="notice-card">
+      <div class="card-hdr">
+        <div class="card-badge" style="background:${s.color}22;color:${s.color};border:1.5px solid ${s.color}44">${s.short}</div>
+        <div class="card-name">${s.name}</div>
+        <div class="card-cnt">공지 ${notices.length}건</div>
+      </div>
+      <div class="card-body">
+        ${notices.map((item,i)=>`
+          <div class="notice-row-m">
+            <div class="notice-num-m">${i+1}</div>
+            <div class="notice-content-m">
+              <div class="notice-text-m" style="font-size:${tfs}px">${item.html||esc(item.text)}</div>
+              <div class="notice-ts-m">${item.ts}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+
+/* ── PAGE SWITCH ── */
+function tryOpenEdit(){
+  pwMode='login'; openPwModal(()=>showEdit());
+}
+function showEdit(){
+  document.getElementById('mainPage').classList.remove('active');
+  document.getElementById('editPage').classList.add('active');
+  renderTabs(); renderEditor(curId);
+}
+function goMain(){
+  document.getElementById('editPage').classList.remove('active');
+  document.getElementById('mainPage').classList.add('active');
+  renderMain();
+}
+
+/* ── TABS ── */
+function renderTabs(){
+  document.getElementById('storeTabs').innerHTML = STORES.map(s=>{
+    const isVis = vis[s.id] && data[s.id].some(n=>n.text.trim());
+    const isCur = s.id === curId;
+    return `<div class="store-tab ${isCur?'active':''} ${isVis?'visible':''}" onclick="selectStore('${s.id}')">
+      <div class="tab-dot" style="background:${s.color}"></div>
+      ${s.name}
+      ${isVis?'<span class="tab-check">✓</span>':''}
+    </div>`;
+  }).join('');
+  // 현재 탭으로 스크롤
+  setTimeout(()=>{
+    const tabs = document.getElementById('storeTabs');
+    const active = tabs.querySelector('.store-tab.active');
+    if(active) active.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+  },50);
+}
+
+function selectStore(id){ curId=id; renderTabs(); renderEditor(id); }
+
+/* ── EDITOR ── */
+function renderEditor(id){
+  const s = STORES.find(x=>x.id===id);
+  const notices = data[id];
+  const isVis = vis[id] && notices.some(n=>n.text.trim());
+  const sc = fontScale[id];
+  const edFs = Math.round(14 * sc);
+
+  document.getElementById('editContent').innerHTML = `
+    <div class="store-edit-hdr">
+      <div class="store-edit-badge" style="background:${s.color}22;color:${s.color};border:1.5px solid ${s.color}44">${s.short}</div>
+      <span class="store-edit-name">${s.name}</span>
+      <button class="vis-toggle ${isVis?'on':''}" onclick="toggleVis('${id}')">
+        ${isVis?'✓ 표시중':'메인 표시'}
+      </button>
+    </div>
+
+    <div class="font-panel-m">
+      <div class="fp-label">📐 폰트 크기</div>
+      <div class="fp-btns-m">
+        ${SCALE_STEPS.map(step=>`<button class="fp-btn-m ${Math.abs(sc-step.v)<.01?'active':''}" onclick="setScale('${id}',${step.v})">${step.l}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="color-bar-m">
+      <div class="cb-label-m">🎨 부분 색상 (텍스트 선택 후 탭)</div>
+      <div class="cb-row">
+        ${COLOR_PRESETS.map(c=>`<div class="cb-swatch-m" style="background:${c}" onmousedown="saveSelAndApply(event,'${c}')" ontouchend="saveSelAndApply(event,'${c}')"></div>`).join('')}
+        <input type="color" class="cb-picker-m" value="#ffffff" onchange="applyColor(this.value)">
+        <button class="cb-clear-m" onmousedown="saveSelAndApply(event,'remove')" ontouchend="saveSelAndApply(event,'remove')">↩ 제거</button>
+      </div>
+      <div class="cb-hint-m">텍스트 드래그 선택 후 색상 버튼 탭</div>
+    </div>
+
+    <div class="notices-edit" id="nwrap_${id}">
+      ${notices.length===0
+        ? `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;font-weight:700">공지사항이 없습니다</div>`
+        : notices.map((item,i)=>`
+          <div class="notice-edit-row">
+            <div class="ne-num">${i+1}</div>
+            <div class="ne-editor"
+              id="ed_${id}_${i}"
+              contenteditable="true"
+              placeholder="공지사항 내용을 입력하세요..."
+              data-sid="${id}" data-idx="${i}"
+              style="font-size:${edFs}px"
+              oninput="onEditorInput(this)"
+            >${item.html||''}</div>
+            <button class="ne-del" onclick="delNotice('${id}',${i})">✕</button>
+          </div>`).join('')}
+    </div>
+    <button class="add-btn-m" onclick="addNotice('${id}')">＋ 공지 추가</button>
+    <div style="height:70px"></div>
+  `;
+}
+
+/* ── EDITOR ACTIONS ── */
+document.addEventListener('selectionchange', ()=>{
+  const sel = window.getSelection();
+  if(!sel||sel.rangeCount===0||sel.isCollapsed) return;
+  const node = sel.getRangeAt(0).commonAncestorContainer;
+  let el = node.nodeType===3?node.parentNode:node;
+  while(el){ if(el.classList&&el.classList.contains('ne-editor')){ savedRange=sel.getRangeAt(0).cloneRange(); return; } el=el.parentNode; }
+});
+
+function saveSelAndApply(e, color){
+  e.preventDefault();
+  if(color==='remove') applyColor('remove');
+  else applyColor(color);
+}
+
+function applyColor(color){
+  if(!savedRange||savedRange.collapsed){ toast('색상 적용할 텍스트를 먼저 선택하세요','warn'); return; }
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(savedRange);
+  document.execCommand('styleWithCSS',false,true);
+  if(color==='remove'||color==='inherit') document.execCommand('removeFormat',false,null);
+  else document.execCommand('foreColor',false,color);
+  let container = savedRange.commonAncestorContainer;
+  let el = container.nodeType===3?container.parentNode:container;
+  while(el){ if(el.classList&&el.classList.contains('ne-editor')){ onEditorInput(el); break; } el=el.parentNode; }
+  savedRange=null;
+  saveToFirebase();
+}
+
+function onEditorInput(el){
+  const id = el.dataset.sid;
+  const idx = parseInt(el.dataset.idx);
+  if(!data[id]||!data[id][idx]) return;
+  data[id][idx].html = el.innerHTML;
+  data[id][idx].text = el.innerText||el.textContent||'';
+  const hasContent = data[id].some(n=>n.text.trim().length>0);
+  if(!hasContent&&vis[id]){ vis[id]=false; renderTabs(); }
+  saveToFirebase();
+}
+
+function addNotice(id){
+  const n=new Date();
+  const ts=`${pad(n.getMonth()+1)}/${pad(n.getDate())} ${pad(n.getHours())}:${pad(n.getMinutes())}`;
+  data[id].push({html:'',text:'',ts});
+  renderEditor(id); renderTabs();
+  setTimeout(()=>{
+    const eds=document.querySelectorAll('.ne-editor');
+    if(eds.length) eds[eds.length-1].focus();
+  },60);
+  saveToFirebase();
+}
+
+function delNotice(id,idx){
+  data[id].splice(idx,1);
+  if(!data[id].some(n=>n.text.trim())) vis[id]=false;
+  renderEditor(id); renderTabs();
+  saveToFirebase();
+}
+
+function toggleVis(id){
+  if(!data[id].some(n=>n.text.trim())){ toast('공지사항을 먼저 입력하세요','warn'); return; }
+  vis[id]=!vis[id];
+  renderTabs(); renderEditor(id);
+  const s=STORES.find(x=>x.id===id);
+  toast(`${s.name} ${vis[id]?'메인에 표시됩니다':'숨겼습니다'}`,vis[id]?'ok':'info');
+  saveToFirebase();
+}
+
+function setScale(id,v){
+  fontScale[id]=v;
+  renderEditor(id);
+  saveToFirebase();
+}
+
+/* ── TOAST ── */
+function toast(msg,type='ok'){
+  let t=document.getElementById('_toast');
+  if(!t){ t=document.createElement('div'); t.id='_toast'; t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);font-size:13px;font-weight:800;padding:10px 20px;border-radius:10px;z-index:9999;pointer-events:none;transition:opacity .3s;white-space:nowrap'; document.body.appendChild(t); }
+  const col={ok:'#34d399',warn:'#fbbf24',info:'#94a3b8'}[type]||'#34d399';
+  t.style.border=`1.5px solid ${col}`;t.style.color=col;t.style.background='var(--bg2)';
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2400);
+}
+
+/* ── PASSWORD ── */
+let _pwCb=null;
+function openPwModal(cb){
+  _pwCb=cb||null;
+  const cfg={
+    'login':      ['🔒 관리자 로그인','편집하려면 비밀번호를 입력하세요',true],
+    'change-old': ['🔑 비밀번호 변경','현재 비밀번호를 입력하세요',false],
+    'change-new': ['🔑 새 비밀번호','새 비밀번호를 입력하세요 (4자리 이상)',false],
+  }[pwMode];
+  document.getElementById('pwTitle').textContent=cfg[0];
+  document.getElementById('pwDesc').textContent=cfg[1];
+  document.getElementById('pwLink').style.display=cfg[2]?'block':'none';
+  document.getElementById('pwInp').value='';
+  document.getElementById('pwErr').textContent='';
+  document.getElementById('pwOv').classList.add('open');
+  setTimeout(()=>document.getElementById('pwInp').focus(),150);
+}
+function closePw(e){
+  if(e&&e.target!==document.getElementById('pwOv')) return;
+  document.getElementById('pwOv').classList.remove('open');
+}
+function submitPw(){
+  const v=document.getElementById('pwInp').value;
+  const err=s=>{document.getElementById('pwErr').textContent=s;document.getElementById('pwInp').value='';document.getElementById('pwInp').focus();};
+  if(pwMode==='login'){
+    if(v===adminPw){closePw();if(_pwCb){_pwCb();_pwCb=null;}}
+    else err('비밀번호가 틀렸습니다');
+  } else if(pwMode==='change-old'){
+    if(v===adminPw){pwMode='change-new';openPwModal();}
+    else err('현재 비밀번호가 틀렸습니다');
+  } else if(pwMode==='change-new'){
+    if(v.length<4){document.getElementById('pwErr').textContent='4자리 이상 입력하세요';return;}
+    adminPw=v;pwMode='login';closePw();toast('✅ 비밀번호가 변경되었습니다','ok');
+    saveToFirebase();
+  }
+}
+function startChangePw(){closePw();pwMode='change-old';setTimeout(openPwModal,200);}
+
+// 전역 노출
+window.tryOpenEdit=()=>tryOpenEdit();
+window.goMain=()=>goMain();
+window.selectStore=(id)=>selectStore(id);
+window.toggleVis=(id)=>toggleVis(id);
+window.setScale=(id,v)=>setScale(id,v);
+window.addNotice=(id)=>addNotice(id);
+window.delNotice=(id,idx)=>delNotice(id,idx);
+window.onEditorInput=(el)=>onEditorInput(el);
+window.saveSelAndApply=(e,c)=>saveSelAndApply(e,c);
+window.applyColor=(c)=>applyColor(c);
+window.closePw=(e)=>closePw(e);
+window.submitPw=()=>submitPw();
+window.startChangePw=()=>startChangePw();
+
+/* ── INIT ── */
+loadFromFirebase();
+</script>
+</body>
+</html>
